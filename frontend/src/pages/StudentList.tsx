@@ -22,7 +22,7 @@ type Student = {
   address?: string;
   photo: string;
   photoIndex?: number;
-  classification: "regular" | "irregular";
+  classification: string;
 };
 
 function StudentList() {

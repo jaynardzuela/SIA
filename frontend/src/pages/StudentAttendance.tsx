@@ -8,7 +8,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eye } from "lucide-react";
-import { Printer, FileText, NotebookPen, Search } from "lucide-react";
+import {
+  Printer,
+  FileText,
+  NotebookPen,
+  Search,
+  Trash,
+  Pen,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -40,6 +47,7 @@ interface AttendanceRecord {
   attendance_date: string;
   status: string;
   photo: string;
+  type: string;
 }
 
 interface Student {
@@ -50,6 +58,7 @@ interface Student {
   date: string;
   status: string;
   photo: string;
+  type: string;
 }
 
 export default function AttendancePage() {
@@ -62,6 +71,7 @@ export default function AttendancePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null); // State for selected student
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false); // State for update modal visibility
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -89,6 +99,7 @@ export default function AttendancePage() {
 
         // Merge attendance with student names
         const mergedData: Student[] = attendanceData.map((record) => ({
+          type: record.type,
           id: record.student_id,
           attendance_id: record.id,
           name: studentMap.get(record.student_id) || "Unknown",
@@ -300,6 +311,7 @@ export default function AttendancePage() {
                         <TableHead>NAME</TableHead>
                         <TableHead>TIME IN</TableHead>
                         <TableHead>DATE</TableHead>
+                        <TableHead>TYPE</TableHead>
                         <TableHead>STATUS</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -310,6 +322,7 @@ export default function AttendancePage() {
                           <TableCell>{student.name}</TableCell>
                           <TableCell>{student.timeIn}</TableCell>
                           <TableCell>{student.date}</TableCell>
+                          <TableCell>{student.type}</TableCell>
                           <TableCell>
                             <Badge
                               variant="default"
@@ -387,7 +400,7 @@ export default function AttendancePage() {
                               variant="outline"
                               onClick={() => handleUpdate(student)}
                             >
-                              Update
+                              <Pen></Pen>Update
                             </Button>
                             <Button
                               variant="destructive"
@@ -424,7 +437,7 @@ export default function AttendancePage() {
                                 }
                               }}
                             >
-                              Delete
+                              <Trash></Trash>Delete
                             </Button>
                           </TableCell>
                         </TableRow>

@@ -52,7 +52,7 @@ app.post('/api/login', async (req, res) => {
 
   app.get('/api/students', async (req, res) => {
     try {
-      const [rows] = await pool.query('SELECT id, name, student_id, section, email, phone, address, photo FROM students');
+      const [rows] = await pool.query('SELECT id, name, student_id, section, email, phone, address, photo, classification FROM students');
       res.status(200).json(rows);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -308,6 +308,41 @@ app.post('/api/add-students', async (req, res) => {
     res.status(500).json({ error: 'Failed to add student.' });
   }
 });
+
+app.get("/api/attendance/daily", async (req, res) => {
+  try {
+    // Define the timezone
+    const timeZone = 'Asia/Shanghai';
+
+    // Get today's local date in the desired timezone
+    const now = new Date();
+    const localDate = format(now, 'yyyy-MM-dd', { timeZone });
+
+    // Query attendance records for the local date
+    const [rows] = await pool.query(`
+      SELECT 
+        attendance.id,
+        students.name AS studentName,
+        attendance.attendance_date,
+        attendance.status
+      FROM attendance
+      JOIN students ON attendance.student_id = students.id
+      WHERE DATE(attendance.attendance_date) = ?;
+    `, [localDate]);
+
+    // Format the response to ensure the `attendance_date` is displayed in the local timezone
+    const formattedRows = rows.map((row) => ({
+      ...row,
+      attendance_date: format(new Date(row.attendance_date), 'yyyy-MM-dd', { timeZone }),
+    }));
+
+    res.json(formattedRows);
+  } catch (error) {
+    console.error("Error fetching daily attendance data:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 
   // Start the server
