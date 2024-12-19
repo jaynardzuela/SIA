@@ -1,0 +1,29 @@
+.attendance-table {
+    margin-top: 20px;
+  }
+  
+  .attendance-table h3 {
+    margin-bottom: 10px;
+  }
+  
+  .attendance-table table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .attendance-table th, .attendance-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  .attendance-table th {
+    background-color: #f1f1f1;
+    font-weight: bold;
+  }
+  
+  .attendance-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  

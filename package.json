@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "react-barcode-reader": "^0.0.2",
+    "react-qr-barcode-scanner": "^2.0.0"
+  }
+}

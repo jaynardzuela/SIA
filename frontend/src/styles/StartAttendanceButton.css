@@ -1,0 +1,31 @@
+.start-attendance-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    font-size: 16px;
+    color: white;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .start-attendance-button:hover {
+    background-color: #45a049;
+  }
+  
+  .start-attendance-button.started {
+    background-color: #f44336;
+  }
+  
+  .start-attendance-button.started:hover {
+    background-color: #da190b;
+  }
+  
+  .start-attendance-button svg {
+    margin-right: 10px;
+  }
+  
+  
