@@ -22,6 +22,7 @@ type Student = {
   address?: string;
   photo: string;
   photoIndex?: number;
+  classification: "regular" | "irregular";
 };
 
 function StudentList() {
@@ -34,6 +35,8 @@ function StudentList() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStudent, setNewStudent] = useState<Partial<Student>>({});
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     fetch("http://localhost:5000/api/students")
@@ -54,9 +57,12 @@ function StudentList() {
   useEffect(() => {
     const filtered = students.filter(
       (student) =>
-        student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.student_id.toString().includes(searchTerm) ||
-        student.section.toLowerCase().includes(searchTerm.toLowerCase())
+        (student.name &&
+          student.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (student.student_id &&
+          student.student_id.toString().includes(searchTerm)) ||
+        (student.section &&
+          student.section.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredStudents(filtered);
   }, [searchTerm, students]);
@@ -95,26 +101,69 @@ function StudentList() {
     setError(null);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setNewStudent({ ...newStudent, [e.target.name]: e.target.value });
   };
 
   const handleAddStudent = () => {
-    if (!newStudent.name || !newStudent.student_id || !newStudent.section) {
+    if (
+      !newStudent.name ||
+      !newStudent.student_id ||
+      !newStudent.section ||
+      !newStudent.classification
+    ) {
       setError("Please fill in all required fields.");
+      setShowErrorModal(true);
       return;
     }
 
-    // Here you would typically make an API call to add the student
-    // For this example, we'll just add it to the local state
-    const addedStudent = {
-      ...newStudent,
-      id: students.length + 1,
-      photo: "placeholder.png",
-    } as Student;
+    // Check for duplicate student_id
+    const duplicateStudent = students.find(
+      (student) => student.student_id === newStudent.student_id
+    );
+    if (duplicateStudent) {
+      setError("Duplicate student ID. Please use a unique student ID.");
+      setShowErrorModal(true);
+      return;
+    }
 
-    setStudents([...students, addedStudent]);
-    closeAddModal();
+    fetch("http://localhost:5000/api/add-students", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newStudent),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then((error) => {
+            throw new Error(error.error);
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setStudents([...students, data]);
+        closeAddModal();
+        setShowSuccessModal(true);
+      })
+      .catch((error) => {
+        console.error("Error adding student:", error);
+        setError(error.message || "Error adding student. Please try again.");
+        setShowErrorModal(true);
+      });
+  };
+
+  const closeErrorModal = () => {
+    setShowErrorModal(false);
+    setError(null);
+  };
+
+  const closeSuccessModal = () => {
+    setShowSuccessModal(false);
+    window.location.reload(); // Reload the page after closing the success modal
   };
 
   return (
@@ -158,7 +207,7 @@ function StudentList() {
             <thead>
               <tr>
                 <th onClick={() => handleSort("student_id")}>
-                  Student ID
+                  Student Number
                   {sortField === "student_id" && (
                     <span className={`sort-icon ${sortOrder}`}></span>
                   )}
@@ -235,7 +284,7 @@ function StudentList() {
                   }}
                 />
                 <p>
-                  <strong>Student ID:</strong> {selectedStudent.student_id}
+                  <strong>Student Number:</strong> {selectedStudent.student_id}
                 </p>
                 <p>
                   <strong>Name:</strong> {selectedStudent.name}
@@ -251,6 +300,10 @@ function StudentList() {
                 </p>
                 <p>
                   <strong>Address:</strong> {selectedStudent.address || "N/A"}
+                </p>
+                <p>
+                  <strong>Classification:</strong>{" "}
+                  {selectedStudent.classification}
                 </p>
               </div>
               <div className="modal-footer">
@@ -271,9 +324,9 @@ function StudentList() {
               </div>
               <div className="modal-body">
                 <div className="form-group">
-                  <label htmlFor="student_id">Student ID</label>
+                  <label htmlFor="student_id">Student Number</label>
                   <input
-                    type="number"
+                    type="text"
                     id="student_id"
                     name="student_id"
                     value={newStudent.student_id || ""}
@@ -302,6 +355,20 @@ function StudentList() {
                     onChange={handleInputChange}
                     required
                   />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="classification">Classification</label>
+                  <select
+                    id="classification"
+                    name="classification"
+                    value={newStudent.classification || ""}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select classification</option>
+                    <option value="regular">Regular</option>
+                    <option value="irregular">Irregular</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label htmlFor="email">Email</label>
@@ -333,11 +400,67 @@ function StudentList() {
                     onChange={handleInputChange}
                   />
                 </div>
+                <div className="form-group">
+                  <label htmlFor="photo">Photo</label>
+                  <input
+                    type="file"
+                    id="photo"
+                    name="photo"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setNewStudent({
+                          ...newStudent,
+                          photo: file.name, // Save the file name as a string
+                        });
+                      }
+                    }}
+                  />
+                </div>
                 {error && <p className="error-message">{error}</p>}
               </div>
               <div className="modal-footer">
                 <button onClick={handleAddStudent}>Add Student</button>
                 <button onClick={closeAddModal}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showErrorModal && (
+          <div className={`modal-overlay active`} onClick={closeErrorModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Error</h2>
+                <button className="modal-close" onClick={closeErrorModal}>
+                  &times;
+                </button>
+              </div>
+              <div className="modal-body">
+                <p>{error}</p>
+              </div>
+              <div className="modal-footer">
+                <button onClick={closeErrorModal}>Close</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showSuccessModal && (
+          <div className={`modal-overlay active`} onClick={closeSuccessModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Success</h2>
+                <button className="modal-close" onClick={closeSuccessModal}>
+                  &times;
+                </button>
+              </div>
+              <div className="modal-body">
+                <p>Student added successfully!</p>
+              </div>
+              <div className="modal-footer">
+                <button onClick={closeSuccessModal}>Close</button>
               </div>
             </div>
           </div>

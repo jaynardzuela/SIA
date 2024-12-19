@@ -1,6 +1,15 @@
+import { useEffect, useState } from "react";
 import professorPhoto from "../images/placeholder/placeholder.png";
 
 function TeacherHeader() {
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Retrieve the email from local storage
+    const email = localStorage.getItem("email");
+    setUserEmail(email);
+  }, []);
+
   return (
     <div className="header">
       <div className="title">QCU-AMS</div>
@@ -10,7 +19,7 @@ function TeacherHeader() {
           alt="Professor Profile"
           className="profile-image"
         />
-        <span className="profile-name">Professor Name</span>
+        <span className="profile-name">{userEmail}</span>
       </div>
     </div>
   );

@@ -1,8 +1,7 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import TeacherSidebar from "../components/TeacherSidebar";
-import TeacherHeader from "../components/TeacherHeader";
-import "../styles/sidebar.css";
-import "../styles/dashboard.css";
+import { Bar, Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -15,7 +14,10 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { Bar, Pie } from "react-chartjs-2";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer } from "../components/ui/chart";
+import TeacherSidebar from "@/components/TeacherSidebar";
+import TeacherHeader from "@/components/TeacherHeader";
 
 // Register Chart.js components
 ChartJS.register(
@@ -54,7 +56,7 @@ interface Stats {
   attendanceRate: number;
 }
 
-function TeacherDashboard() {
+export default function TeacherDashboard() {
   const [barChartData, setBarChartData] = useState<BarChartData | null>(null);
   const [pieChartData, setPieChartData] = useState<PieChartData | null>(null);
   const [stats, setStats] = useState<Stats>({
@@ -77,7 +79,7 @@ function TeacherDashboard() {
             {
               label: "Student Attendance",
               data: data.attendance,
-              backgroundColor: "#4CAF50",
+              backgroundColor: "#1ea3f6",
             },
           ],
         });
@@ -98,7 +100,7 @@ function TeacherDashboard() {
           datasets: [
             {
               data: data.attendanceBreakdown,
-              backgroundColor: ["#00FF00", "#FF0000", "#FFA500"],
+              backgroundColor: ["#28a745", "#dc3545", "#ffc107"],
             },
           ],
         });
@@ -128,42 +130,92 @@ function TeacherDashboard() {
   }, []);
 
   return (
-    <>
-      <div className="nav">
-        <TeacherSidebar />
+    <div className="flex h-screen bg-background">
+      <TeacherSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TeacherHeader />
+        <main className="main">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
+              Dashboard
+            </h1>
+            <div className="grid gap-6 mb-8 md:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Students
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.students}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Classes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.classes}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Attendance Rate
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stats.attendanceRate}%
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="grid gap-6 mb-8 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Attendance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-[300px]">
+                    {barChartData ? (
+                      <Bar
+                        data={barChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                        }}
+                      />
+                    ) : (
+                      <p>Loading...</p>
+                    )}
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Total Attendance Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-[300px]">
+                    {pieChartData ? (
+                      <Pie
+                        data={pieChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                        }}
+                      />
+                    ) : (
+                      <p>Loading...</p>
+                    )}
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
       </div>
-      <TeacherHeader />
-      <div className="main">
-        {/* Statistics Section */}
-        <div className="stats-cards">
-          <div className="card">
-            <h2>{stats.students}</h2>
-            <p>Students</p>
-          </div>
-          <div className="card">
-            <h2>{stats.classes}</h2>
-            <p>Classes</p>
-          </div>
-          <div className="card">
-            <h2>{stats.attendanceRate}%</h2>
-            <p>Attendance Rate</p>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="charts">
-          <div className="chart-container">
-            <h3>Monthly Attendance</h3>
-            {barChartData ? <Bar data={barChartData} /> : <p>Loading...</p>}
-          </div>
-          <div className="chart-container">
-            <h3>Total Attendance Overview</h3>
-            {pieChartData ? <Pie data={pieChartData} /> : <p>Loading...</p>}
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
-
-export default TeacherDashboard;

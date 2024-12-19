@@ -1,7 +1,6 @@
 import TeacherSidebar from "../components/TeacherSidebar";
 import "../styles/sidebar.css";
 import TeacherHeader from "../components/TeacherHeader";
-import AttendanceSystemWithCameraScanner from "@/components/AttendanceSystemWithCameraScanner";
 import "../styles/App.css";
 function StudentReport() {
   return (
@@ -10,9 +9,7 @@ function StudentReport() {
         <TeacherSidebar />
       </div>
       <TeacherHeader />
-      <div className="main">
-        <AttendanceSystemWithCameraScanner />
-      </div>
+      <div className="main"></div>
     </>
   );
 }

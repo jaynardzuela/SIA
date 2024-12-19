@@ -61,6 +61,7 @@ export default function AttendancePage() {
   const [status, setStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null); // State for selected student
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false); // State for update modal visibility
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -138,6 +139,44 @@ export default function AttendancePage() {
 
   const handleNavigation = () => {
     navigate("/");
+  };
+
+  const handleUpdate = (student: Student) => {
+    setSelectedStudent(student);
+    setIsUpdateModalOpen(true);
+  };
+
+  const handleUpdateSubmit = async (updatedStudent: Student) => {
+    try {
+      const payload = {
+        student_id: updatedStudent.id,
+        time_in: updatedStudent.timeIn,
+        attendance_date: updatedStudent.date,
+        status: updatedStudent.status,
+        photo: updatedStudent.photo,
+      };
+
+      await axios.put(
+        `http://localhost:5000/api/attendance/${updatedStudent.attendance_id}`,
+        payload
+      );
+
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.attendance_id === updatedStudent.attendance_id ? updatedStudent : s
+        )
+      );
+      setFilteredStudents((prev) =>
+        prev.map((s) =>
+          s.attendance_id === updatedStudent.attendance_id ? updatedStudent : s
+        )
+      );
+      setIsUpdateModalOpen(false);
+      alert("Attendance record updated successfully.");
+    } catch (error) {
+      console.error("Error updating attendance record:", error);
+      alert("Failed to update the attendance record. Please try again.");
+    }
   };
 
   return (
@@ -285,20 +324,26 @@ export default function AttendancePage() {
                               {student.status}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="flex gap-2">
                             <Dialog>
                               <DialogTrigger asChild>
                                 <Button
-                                  onClick={() => setSelectedStudent(student)} // Set selected student
+                                  onClick={() => setSelectedStudent(student)}
                                 >
                                   <Eye size={20} />
                                   View
                                 </Button>
                               </DialogTrigger>
                               {selectedStudent && (
-                                <DialogContent className="sm:max-w-[425px]">
+                                <DialogContent
+                                  className="sm:max-w-[425px]"
+                                  aria-describedby="student-details-description"
+                                >
                                   <DialogTitle>Student Details</DialogTitle>
-                                  <div className="space-y-4">
+                                  <div
+                                    id="student-details-description"
+                                    className="space-y-4"
+                                  >
                                     <img
                                       src={selectedStudent.photo}
                                       alt={`${selectedStudent.name}'s larger photo`}
@@ -318,7 +363,7 @@ export default function AttendancePage() {
                                         {selectedStudent.timeIn}
                                       </p>
                                       <p>
-                                        <strong>Status:</strong>{" "}
+                                        <strong>Status:</strong>
                                         <Badge
                                           variant="default"
                                           className={
@@ -337,50 +382,50 @@ export default function AttendancePage() {
                                   </div>
                                 </DialogContent>
                               )}
-
-                              {/* Delete Button */}
-                              <Button
-                                variant="destructive"
-                                onClick={async () => {
-                                  try {
-                                    // Use attendance_id to make the delete request
-                                    await axios.delete(
-                                      `http://localhost:5000/api/attendance/${student.attendance_id}`
-                                    );
-
-                                    // Remove the student from the local state
-                                    setFilteredStudents((prev) =>
-                                      prev.filter(
-                                        (s) =>
-                                          s.attendance_id !==
-                                          student.attendance_id
-                                      )
-                                    );
-                                    setStudents((prev) =>
-                                      prev.filter(
-                                        (s) =>
-                                          s.attendance_id !==
-                                          student.attendance_id
-                                      )
-                                    );
-
-                                    alert(
-                                      "Attendance record deleted successfully."
-                                    );
-                                  } catch (error) {
-                                    console.error(
-                                      "Error deleting attendance record:",
-                                      error
-                                    );
-                                    alert(
-                                      "Failed to delete the attendance record. Please try again."
-                                    );
-                                  }
-                                }}
-                              >
-                                Delete
-                              </Button>
                             </Dialog>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleUpdate(student)}
+                            >
+                              Update
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              onClick={async () => {
+                                try {
+                                  await axios.delete(
+                                    `http://localhost:5000/api/attendance/${student.attendance_id}`
+                                  );
+                                  setFilteredStudents((prev) =>
+                                    prev.filter(
+                                      (s) =>
+                                        s.attendance_id !==
+                                        student.attendance_id
+                                    )
+                                  );
+                                  setStudents((prev) =>
+                                    prev.filter(
+                                      (s) =>
+                                        s.attendance_id !==
+                                        student.attendance_id
+                                    )
+                                  );
+                                  alert(
+                                    "Attendance record deleted successfully."
+                                  );
+                                } catch (error) {
+                                  console.error(
+                                    "Error deleting attendance record:",
+                                    error
+                                  );
+                                  alert(
+                                    "Failed to delete the attendance record. Please try again."
+                                  );
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -392,6 +437,103 @@ export default function AttendancePage() {
           </div>
         </div>
       </div>
+
+      {/* Update Modal */}
+      {isUpdateModalOpen && selectedStudent && (
+        <Dialog open={isUpdateModalOpen} onOpenChange={setIsUpdateModalOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogTitle>Update Student</DialogTitle>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleUpdateSubmit(selectedStudent);
+              }}
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedStudent.name}
+                    onChange={(e) =>
+                      setSelectedStudent({
+                        ...selectedStudent,
+                        name: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={selectedStudent.date}
+                    onChange={(e) =>
+                      setSelectedStudent({
+                        ...selectedStudent,
+                        date: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Time In
+                  </label>
+                  <input
+                    type="time"
+                    value={selectedStudent.timeIn}
+                    onChange={(e) =>
+                      setSelectedStudent({
+                        ...selectedStudent,
+                        timeIn: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Status
+                  </label>
+                  <select
+                    value={selectedStudent.status}
+                    onChange={(e) =>
+                      setSelectedStudent({
+                        ...selectedStudent,
+                        status: e.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="PRESENT">Present</option>
+                    <option value="LATE">Late</option>
+                    <option value="ABSENT">Absent</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsUpdateModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="ml-2">
+                  Update
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

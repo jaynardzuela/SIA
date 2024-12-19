@@ -4,9 +4,10 @@ import cors from 'cors';
 import { createPool } from 'mysql2/promise';
 import { format } from 'date-fns-tz';
 
-
 const app = express();
 const port = 5000;
+
+
 
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -19,33 +20,35 @@ const pool = createPool({
   database: 'sia',
 });
 
-// Endpoint to save photo
-// app.post('/api/photos', async (req, res) => {
-//   const { image } = req.body;
 
-//   if (!image) {
-//     return res.status(400).send('Image data is required.');
-//   }
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
 
-//   try {
-//     const result = await pool.query('INSERT INTO photos (image) VALUES (?)', [image]);
-//     res.status(200).send({ message: 'Photo saved successfully!', id: result[0].insertId });
-//   } catch (error) {
-//     console.error('Error saving photo:', error);
-//     res.status(500).send('Failed to save photo.');
-//   }
-// });
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
 
+  try {
+    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
 
-// app.get('/api/photos', async (req, res) => {
-//     try {
-//       const [rows] = await pool.query('SELECT id, image FROM photos');
-//       res.status(200).json(rows);
-//     } catch (error) {
-//       console.error('Error fetching photos:', error);
-//       res.status(500).send('Failed to fetch photos.');
-//     }
-//   });
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const user = rows[0];
+
+    // Compare the provided password with the stored password
+    if (password !== user.password) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    res.status(200).json({ success: true, data: { userId: user.id, role: user.role } });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: 'Failed to login.' });
+  }
+});
+
 
   app.get('/api/students', async (req, res) => {
     try {
@@ -240,7 +243,71 @@ const pool = createPool({
     }
   });
   
+  app.put('/api/attendance/:id', async (req, res) => {
+    const { id } = req.params;
+    const { student_id, time_in, attendance_date, status, photo } = req.body;
+  
+    if (!student_id || !time_in || !attendance_date || !status) {
+      return res.status(400).send('All fields are required.');
+    }
+  
+    try {
+      // Log the received values
+      console.log("Received values:", { student_id, time_in, attendance_date, status, photo });
+  
+      // Combine attendance_date and time_in to create a valid Date object
+      const combinedDateTime = `${attendance_date}T${time_in}`;
+      const parsedDate = new Date(attendance_date);
+      const parsedTimeIn = new Date(combinedDateTime);
+  
+      if (isNaN(parsedDate.getTime()) || isNaN(parsedTimeIn.getTime())) {
+        return res.status(400).send('Invalid date or time value.');
+      }
+  
+      // Define the timezone
+      const timeZone = 'Asia/Shanghai';
+      const formattedDate = format(parsedDate, 'yyyy-MM-dd', { timeZone });
+      const formattedTimeIn = format(parsedTimeIn, 'yyyy-MM-dd HH:mm:ss', { timeZone });
+  
+      // Update the attendance record in the database
+      const [result] = await pool.query(
+        `UPDATE attendance 
+         SET student_id = ?, time_in = ?, attendance_date = ?, status = ?, photo = ?
+         WHERE id = ?`,
+        [student_id, formattedTimeIn, formattedDate, status, photo, id]
+      );
+  
+      // Check if any rows were affected
+      if (result.affectedRows === 0) {
+        return res.status(404).send({ message: "No matching attendance record found to update." });
+      }
+  
+      res.status(200).send({ message: "Attendance updated successfully!" });
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      res.status(500).send("Failed to update attendance.");
+    }
+  });
 
+
+app.post('/api/add-students', async (req, res) => {
+  const { student_id, name, section, email, phone, address, photo, classification } = req.body;
+
+  if (!student_id || !name || !section || !classification) {
+    return res.status(400).json({ error: 'Student ID, name, section, and classification are required.' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO students (student_id, name, section, email, phone, address, photo, classification) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [student_id, name, section, email, phone, address, photo, classification]
+    );
+    res.status(201).json({ message: 'Student added successfully!', id: result.insertId });
+  } catch (error) {
+    console.error('Error adding student:', error);
+    res.status(500).json({ error: 'Failed to add student.' });
+  }
+});
 
 
   // Start the server
