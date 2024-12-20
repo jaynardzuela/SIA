@@ -2,8 +2,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import TeacherSidebar from "../components/TeacherSidebar";
-import TeacherHeader from "../components/TeacherHeader";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +37,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import AttendanceForm from "../components/AttendanceForm"; // Import the AttendanceForm component
+import GuardSidebar from "@/components/GuardSidebar";
+import GuardHeader from "@/components/GuardHeader";
 
 // Define the Student interface
 interface AttendanceRecord {
@@ -62,7 +62,7 @@ interface Student {
   type: string;
 }
 
-export default function AttendancePage() {
+export default function GuardAttendance() {
   const [date, setDate] = useState<Date>(new Date());
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -215,9 +215,9 @@ export default function AttendancePage() {
   return (
     <>
       <div className="nav">
-        <TeacherSidebar />
+        <GuardSidebar />
       </div>
-      <TeacherHeader />
+      <GuardHeader />
       <div className="main">
         <div className="container mx-auto py-6">
           <div className="flex items-center justify-between mb-8">

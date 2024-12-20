@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { createPool } from 'mysql2/promise';
 import { format } from 'date-fns-tz';
-
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns';
 const app = express();
 const port = 5000;
 
@@ -105,13 +105,22 @@ app.post('/api/login', async (req, res) => {
  
   app.get('/api/attendance', async (req, res) => {
     try {
-      const [rows] = await pool.query('SELECT * FROM attendance');
+      const [rows] = await pool.query(`
+        SELECT 
+          attendance.id,
+          attendance.student_id,
+          students.name,
+          attendance.attendance_date,
+          attendance.status,
+          attendance.photo
+        FROM attendance
+        JOIN students ON attendance.student_id = students.id
+      `);
       
       // Convert attendance_date to ISO format
       const formattedRows = rows.map((row) => ({
         ...row,
         attendance_date: new Date(row.attendance_date).toLocaleString('en-US', { timeZone: 'Asia/Shanghai' })
-
       }));
   
       res.status(200).json(formattedRows);
@@ -165,22 +174,32 @@ app.post('/api/login', async (req, res) => {
       const [rows] = await pool.query(`
         SELECT 
           MONTHNAME(attendance_date) AS month,
-          COUNT(*) AS attendance_count
+          status,
+          COUNT(*) AS count
         FROM attendance
-        GROUP BY MONTH(attendance_date)
+        GROUP BY MONTH(attendance_date), status
         ORDER BY MONTH(attendance_date);
       `);
   
-      const months = rows.map(row => row.month);
-      const attendance = rows.map(row => row.attendance_count);
+      // Transform data into a structure suitable for charting
+      const months = [...new Set(rows.map(row => row.month))]; // Unique months
+      const attendanceData = months.map(month => {
+        const monthRows = rows.filter(row => row.month === month);
+        return {
+          month,
+          present: monthRows.find(row => row.status === "PRESENT")?.count || 0,
+          absent: monthRows.find(row => row.status === "ABSENT")?.count || 0,
+          late: monthRows.find(row => row.status === "LATE")?.count || 0,
+        };
+      });
   
-      res.json({ months, attendance });
+      res.json(attendanceData);
     } catch (error) {
       console.error("Error fetching monthly attendance data:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
-
+  
   app.get("/api/attendance/overview", async (req, res) => {
     try {
       const [rows] = await pool.query(`
@@ -322,7 +341,7 @@ app.get("/api/attendance/daily", async (req, res) => {
     const [rows] = await pool.query(`
       SELECT 
         attendance.id,
-        students.name AS studentName,
+        students.name AS name,
         attendance.attendance_date,
         attendance.status
       FROM attendance
@@ -343,7 +362,203 @@ app.get("/api/attendance/daily", async (req, res) => {
   }
 });
 
+app.get("/api/attendance/weekly", async (req, res) => {
+  try {
+    // Define the timezone
+    const timeZone = "Asia/Shanghai";
 
+    // Get the current date and calculate the date 7 days ago
+    const now = new Date();
+    const startDate = format(subDays(now, 7), "yyyy-MM-dd", { timeZone });
+    const endDate = format(now, "yyyy-MM-dd", { timeZone });
+
+    // Query weekly attendance records
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        students.student_id,
+        students.name AS name,
+        students.section,
+        attendance.attendance_date,
+        attendance.status
+      FROM 
+        attendance
+      JOIN 
+        students 
+      ON 
+        attendance.student_id = students.id
+      WHERE 
+        DATE(attendance.attendance_date) BETWEEN ? AND ?
+      ORDER BY 
+        students.section, students.name, attendance.attendance_date;
+      `,
+      [startDate, endDate]
+    );
+
+    // Format the response to ensure `attendance_date` is displayed in the local timezone
+    const formattedRows = rows.map((row) => ({
+      ...row,
+      attendance_date: format(new Date(row.attendance_date), "yyyy-MM-dd", {
+        timeZone,
+      }),
+    }));
+
+    res.json(formattedRows);
+  } catch (error) {
+    console.error("Error fetching weekly attendance data:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+app.get("/api/attendance/monthlyreport", async (req, res) => {
+  try {
+    const today = new Date();
+    const start = format(startOfMonth(today), 'yyyy-MM-dd'); // Start of the month
+    const end = format(endOfMonth(today), 'yyyy-MM-dd'); // End of the month
+
+    const [rows] = await pool.query(`
+      SELECT 
+        attendance.id,
+        students.name AS studentName,
+        attendance.attendance_date,
+        attendance.status
+      FROM attendance
+      JOIN students ON attendance.student_id = students.id
+      WHERE attendance.attendance_date BETWEEN ? AND ?;
+    `, [start, end]);
+
+    console.log("Raw rows:", rows); // Log the raw rows
+
+    const formattedRows = rows.map((row) => ({
+      ...row,
+      attendance_date: format(new Date(row.attendance_date), 'yyyy-MM-dd'),
+    }));
+
+    console.log("Formatted rows:", formattedRows); // Log the formatted rows
+
+    res.json({ attendance: formattedRows });
+  } catch (error) {
+    console.error("Error fetching monthly attendance data:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get("/api/attendance/yearly", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        YEAR(attendance_date) AS year,
+        COUNT(*) AS attendance_count,
+        SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) AS present_count,
+        SUM(CASE WHEN status = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count
+      FROM attendance
+      GROUP BY YEAR(attendance_date)
+      ORDER BY year;
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching yearly attendance data:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get('/api/professors', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT COUNT(*) as count FROM users WHERE role = "teacher"');
+    const count = rows[0].count;
+    res.status(200).json({ count });
+  } catch (error) {
+    console.error('Error fetching professors count:', error);
+    res.status(500).send('Failed to fetch professors count.');
+  }
+});
+
+// Add this endpoint to fetch accounts
+app.post('/api/accounts', async (req, res) => {
+  const { email, role, password } = req.body;
+
+  if (!email || !role || !password) {
+    return res.status(400).json({ error: 'Email, role, and password are required.' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO users (email, role, password) VALUES (?, ?, ?)',
+      [email, role, password]
+    );
+
+    const newAccount = {
+      id: result.insertId,
+      email,
+      role,
+    };
+
+    res.status(201).json(newAccount);
+  } catch (error) {
+    console.error('Error adding account:', error);
+    res.status(500).send('Failed to add account.');
+  }
+});
+
+app.put('/api/accounts/:id', async (req, res) => {
+  const { id } = req.params;
+  const { email, role } = req.body;
+
+  if (!email || !role) {
+    return res.status(400).json({ error: 'Email and role are required.' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      'UPDATE users SET email = ?, role = ? WHERE id = ?',
+      [email, role, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send({ message: "No matching account found to update." });
+    }
+
+    const updatedAccount = {
+      id: parseInt(id, 10),
+      email,
+      role,
+    };
+
+    res.status(200).json(updatedAccount);
+  } catch (error) {
+    console.error('Error updating account:', error);
+    res.status(500).send('Failed to update account.');
+  }
+});
+
+app.delete('/api/accounts/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await pool.query('DELETE FROM users WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send({ message: "No matching account found to delete." });
+    }
+
+    res.status(200).send({ message: "Account deleted successfully!" });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).send('Failed to delete account.');
+  }
+});
+
+app.get('/api/accounts', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT id, email, role FROM users');
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching accounts:', error);
+    res.status(500).send('Failed to fetch accounts.');
+  }
+});
 
   // Start the server
 app.listen(port, () => {

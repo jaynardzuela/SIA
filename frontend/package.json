@@ -26,6 +26,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "init": "^0.1.2",
+    "json2csv": "^6.0.0-alpha.2",
     "lucide-react": "^0.468.0",
     "next": "^15.1.2",
     "react": "^18.3.1",
@@ -40,6 +41,7 @@
     "react-router-dom": "^7.0.2",
     "react-toastify": "^11.0.2",
     "react-webcam": "^7.2.0",
+    "recharts": "^2.15.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.1"
@@ -47,6 +49,7 @@
   "devDependencies": {
     "@eslint/js": "^9.15.0",
     "@shadcn/ui": "^0.0.4",
+    "@types/json2csv": "^5.0.7",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

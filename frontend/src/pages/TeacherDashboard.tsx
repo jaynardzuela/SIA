@@ -1,47 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bar, Pie } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import { Pie } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Title, Tooltip, Legend } from "chart.js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer } from "../components/ui/chart";
 import TeacherSidebar from "@/components/TeacherSidebar";
 import TeacherHeader from "@/components/TeacherHeader";
+import MonthlyReport from "@/components/MonthlyReport";
 
 // Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(ArcElement, Title, Tooltip, Legend);
 
 // Define types for chart data
-interface BarChartData {
-  labels: string[];
-  datasets: {
-    label: string;
-    data: number[];
-    backgroundColor: string;
-  }[];
-}
-
 interface PieChartData {
   labels: string[];
   datasets: {
@@ -57,7 +28,6 @@ interface Stats {
 }
 
 export default function TeacherDashboard() {
-  const [barChartData, setBarChartData] = useState<BarChartData | null>(null);
   const [pieChartData, setPieChartData] = useState<PieChartData | null>(null);
   const [stats, setStats] = useState<Stats>({
     students: 0,
@@ -66,28 +36,6 @@ export default function TeacherDashboard() {
   });
 
   useEffect(() => {
-    // Fetch attendance data for the bar chart
-    const fetchBarChartData = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:5000/api/attendance/monthly"
-        );
-        const data = await response.json();
-        setBarChartData({
-          labels: data.months,
-          datasets: [
-            {
-              label: "Student Attendance",
-              data: data.attendance,
-              backgroundColor: "#1ea3f6",
-            },
-          ],
-        });
-      } catch (error) {
-        console.error("Error fetching bar chart data:", error);
-      }
-    };
-
     // Fetch attendance overview data for the pie chart
     const fetchPieChartData = async () => {
       try {
@@ -124,7 +72,6 @@ export default function TeacherDashboard() {
       }
     };
 
-    fetchBarChartData();
     fetchPieChartData();
     fetchStats();
   }, []);
@@ -172,26 +119,7 @@ export default function TeacherDashboard() {
               </Card>
             </div>
             <div className="grid gap-6 mb-8 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Attendance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer className="h-[300px]">
-                    {barChartData ? (
-                      <Bar
-                        data={barChartData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                        }}
-                      />
-                    ) : (
-                      <p>Loading...</p>
-                    )}
-                  </ChartContainer>
-                </CardContent>
-              </Card>
+              <MonthlyReport />
               <Card>
                 <CardHeader>
                   <CardTitle>Total Attendance Overview</CardTitle>
